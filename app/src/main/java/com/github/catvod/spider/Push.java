@@ -41,9 +41,9 @@ public class Push extends Spider {
     /** 磁力铺线(详情阶段零离线): 115 旧磁力只读列举铺多集, 否则扩展线单集占位;
      *  PikPak 扩展线单集占位; 原有默认线交内核 DHT 永远保留。点某集才在 playerContent 激活对应盘离线。 */
     private Vod magnetVod(String magnet) {
-        Vod vod = Vod.create().id(magnet).name(new File(magnet).getName()).pic(Image.PUSH).typeName("FongMi");
+        Vod vod = Vod.create().id(magnet).name(magnetName(magnet)).pic(Image.PUSH).typeName("FongMi");
         String qm = enc(magnet);
-        String disp = clean(new File(magnet).getName());
+        String disp = magnetName(magnet);
         List<String> froms = new ArrayList<>();
         List<String> urls = new ArrayList<>();
 
@@ -117,6 +117,28 @@ public class Push extends Spider {
     private static String dec(String s) {
         try { return URLDecoder.decode(s == null ? "" : s, "UTF-8"); }
         catch (Exception e) { return s == null ? "" : s; }
+    }
+
+    /** 磁力显示名: 优先 dn= 参数(URL 解码), 无 dn 退回 btih 前 8 位(对齐 py)。 */
+    private static String magnetName(String magnet) {
+        if (magnet == null) return "";
+        String name = "";
+        int i = magnet.indexOf("dn=");
+        if (i >= 0) {
+            int s = i + 3;
+            int e = magnet.indexOf('&', s);
+            name = dec(e >= 0 ? magnet.substring(s, e) : magnet.substring(s));
+        }
+        if (name.isEmpty()) {
+            int b = magnet.indexOf("btih:");
+            if (b >= 0) {
+                String h = magnet.substring(b + 5);
+                int e = h.indexOf('&');
+                if (e >= 0) h = h.substring(0, e);
+                name = "Push " + (h.length() > 8 ? h.substring(0, 8) : h);
+            }
+        }
+        return clean(name);
     }
 
     private static String clean(String s) {
