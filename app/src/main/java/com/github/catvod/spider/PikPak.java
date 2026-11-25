@@ -299,26 +299,30 @@ public final class PikPak {
     // ---------- 离线 ----------
     /** 提交离线，返回 [file_id, phase]；失败 null。 */
     private static String[] submit(String magnet, String name) {
-        JSONObject b = new JSONObject();
-        b.put("kind", "drive#file");
-        if (name != null && !name.isEmpty()) b.put("name", name);
-        b.put("upload_type", "UPLOAD_TYPE_URL");
-        JSONObject url = new JSONObject();
-        url.put("url", magnet);
-        b.put("url", url);
-        b.put("folder_type", "DOWNLOAD");
-        JSONObject js = api("POST", API_HOST + "/drive/v1/files", b.toString());
-        if (js == null) return null;
-        JSONObject task = js.optJSONObject("task");
-        if (task == null) task = new JSONObject();
-        String fid = task.optString("file_id", js.optJSONObject("file") == null ? "" : js.optJSONObject("file").optString("id", ""));
-        String phase = task.optString("phase", "");
-        String tid = task.optString("id", "");
-        if (fid.isEmpty() && !tid.isEmpty()) {
-            String[] r = waitTaskFileId(tid);
-            if (r != null) return r;
+        try {
+            JSONObject b = new JSONObject();
+            b.put("kind", "drive#file");
+            if (name != null && !name.isEmpty()) b.put("name", name);
+            b.put("upload_type", "UPLOAD_TYPE_URL");
+            JSONObject url = new JSONObject();
+            url.put("url", magnet);
+            b.put("url", url);
+            b.put("folder_type", "DOWNLOAD");
+            JSONObject js = api("POST", API_HOST + "/drive/v1/files", b.toString());
+            if (js == null) return null;
+            JSONObject task = js.optJSONObject("task");
+            if (task == null) task = new JSONObject();
+            String fid = task.optString("file_id", js.optJSONObject("file") == null ? "" : js.optJSONObject("file").optString("id", ""));
+            String phase = task.optString("phase", "");
+            String tid = task.optString("id", "");
+            if (fid.isEmpty() && !tid.isEmpty()) {
+                String[] r = waitTaskFileId(tid);
+                if (r != null) return r;
+            }
+            return new String[]{fid.isEmpty() ? null : fid, phase};
+        } catch (Exception e) {
+            return null;
         }
-        return new String[]{fid.isEmpty() ? null : fid, phase};
     }
 
     private static String[] waitTaskFileId(String taskId) {
@@ -350,12 +354,16 @@ public final class PikPak {
     }
 
     private static JSONArray listDir(String parentId) {
-        JSONObject filters = new JSONObject();
-        JSONObject trashed = new JSONObject(); trashed.put("eq", false); filters.put("trashed", trashed);
-        JSONObject phase = new JSONObject(); phase.put("eq", "PHASE_TYPE_COMPLETE"); filters.put("phase", phase);
-        String url = API_HOST + "/drive/v1/files?parent_id=" + enc(parentId) + "&limit=100&with_audit=true&filters=" + enc(filters.toString());
-        JSONObject js = api("GET", url, null);
-        return js == null ? new JSONArray() : js.optJSONArray("files");
+        try {
+            JSONObject filters = new JSONObject();
+            JSONObject trashed = new JSONObject(); trashed.put("eq", false); filters.put("trashed", trashed);
+            JSONObject phase = new JSONObject(); phase.put("eq", "PHASE_TYPE_COMPLETE"); filters.put("phase", phase);
+            String url = API_HOST + "/drive/v1/files?parent_id=" + enc(parentId) + "&limit=100&with_audit=true&filters=" + enc(filters.toString());
+            JSONObject js = api("GET", url, null);
+            return js == null ? new JSONArray() : js.optJSONArray("files");
+        } catch (Exception e) {
+            return new JSONArray();
+        }
     }
 
     /** 收集目录（含两层子目录）内视频，返回 [name, id] 列表。 */
@@ -374,7 +382,7 @@ public final class PikPak {
             if (!isVideo(nm) || id.isEmpty()) continue;
             out.add(new String[]{nm, id});
         }
-        return out;
+        return JunkFilter.filter(out); // 外置 names/tokens/sha1s + token 边界（与 p115 共用）
     }
 
     private static boolean isVideo(String name) {

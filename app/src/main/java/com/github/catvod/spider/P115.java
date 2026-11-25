@@ -35,7 +35,6 @@ public final class P115 {
     private static final String UA = "Mozilla/5.0 115disk/36.2.28 115Browser/36.2.28 115wangpan_android/36.2.28";
     private static final String APP_VER = "36.2.28";
     private static final String[] VIDEO_EXT = {".mp4", ".mkv", ".avi", ".ts", ".mov", ".flv", ".wmv", ".rmvb", ".iso"};
-    private static final String SAMPLE_WORDS[] = {"sample", "preview", "预告", "预览", "广告", "trailer"};
 
     // 115 专属公钥 N / e
     private static final BigInteger N = new BigInteger(
@@ -286,7 +285,7 @@ public final class P115 {
         }
     }
 
-    /** 列目录内视频，返回 [name, pickcode] 列表。 */
+    /** 列目录内视频，返回 [name, pickcode, sha1] 三元组。 */
     private static List<String[]> fetchFolderVideos(String fid) {
         List<String[]> out = new ArrayList<>();
         if (fid == null || fid.isEmpty()) return out;
@@ -305,8 +304,9 @@ public final class P115 {
                 JSONObject it = arr.getJSONObject(i);
                 String pc = it.optString("pc", it.optString("pickcode", ""));
                 String nm = it.optString("n", it.optString("name", ""));
+                String sha = it.optString("sha", it.optString("sha1", ""));
                 if (pc.isEmpty() || !isVideo(nm)) continue;
-                out.add(new String[]{nm, pc});
+                out.add(new String[]{nm, pc, sha});
             }
         } catch (Exception ignore) {
         }
@@ -340,12 +340,6 @@ public final class P115 {
         if (name == null) return false;
         String n = name.toLowerCase();
         for (String e : VIDEO_EXT) if (n.endsWith(e)) return true;
-        return false;
-    }
-
-    private static boolean isJunk(String name) {
-        String n = name.toLowerCase();
-        for (String w : SAMPLE_WORDS) if (n.contains(w)) return true;
         return false;
     }
 
@@ -388,9 +382,11 @@ public final class P115 {
     }
 
     private static List<String[]> filterJunk(List<String[]> vids) {
-        List<String[]> kept = new ArrayList<>();
-        for (String[] v : vids) if (!isJunk(v[0])) kept.add(v);
-        return dedup(kept.isEmpty() ? vids : kept);
+        List<String[]> kept = JunkFilter.filter(vids); // 外置 names/tokens/sha1s + token 边界
+        List<String[]> out = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (String[] v : kept) if (seen.add(v[1])) out.add(new String[]{v[0], v[1]}); // 剥回 [name, pickcode]
+        return out;
     }
 
     /** 取原画直链，返回 [url, User-Agent]；失败 url 为空。 */
