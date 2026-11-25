@@ -247,15 +247,19 @@ public final class P115 {
     // ---------- 离线 ----------
     private static String queryFileId(String infoHash) {
         if (infoHash == null) return null;
-        JSONObject p = new JSONObject();
-        p.put("ac", "get_user_task");
-        p.put("info_hash", infoHash);
-        p.put("app", "android");
-        p.put("app_ver", APP_VER);
-        JSONObject inner = apiPostRsa(OFFLINE_API, p, 10000);
-        if (inner == null) return null;
-        String fid = inner.optString("file_id", "").trim();
-        return fid.isEmpty() ? null : fid;
+        try {
+            JSONObject p = new JSONObject();
+            p.put("ac", "get_user_task");
+            p.put("info_hash", infoHash);
+            p.put("app", "android");
+            p.put("app_ver", APP_VER);
+            JSONObject inner = apiPostRsa(OFFLINE_API, p, 10000);
+            if (inner == null) return null;
+            String fid = inner.optString("file_id", "").trim();
+            return fid.isEmpty() ? null : fid;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String waitFileId(String infoHash, long timeoutMs) {
@@ -269,13 +273,17 @@ public final class P115 {
     }
 
     private static JSONObject submitMagnet(String magnet) {
-        JSONObject p = new JSONObject();
-        p.put("ac", "add_task_url");
-        p.put("url", magnet);
-        p.put("savepath_id", "0");
-        p.put("app", "android");
-        p.put("app_ver", APP_VER);
-        return apiPostRsa(OFFLINE_API, p, 12000);
+        try {
+            JSONObject p = new JSONObject();
+            p.put("ac", "add_task_url");
+            p.put("url", magnet);
+            p.put("savepath_id", "0");
+            p.put("app", "android");
+            p.put("app_ver", APP_VER);
+            return apiPostRsa(OFFLINE_API, p, 12000);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** 列目录内视频，返回 [name, pickcode] 列表。 */
