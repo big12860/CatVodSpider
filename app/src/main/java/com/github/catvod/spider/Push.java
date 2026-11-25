@@ -47,8 +47,12 @@ public class Push extends Spider {
         }
         if (files.isEmpty()) return vod.playUrl(magnet).playFrom("迅雷");
         List<String> episodes = new ArrayList<>();
-        for (String[] f : files) episodes.add(f[0] + "$" + f[1]); // 集名$网盘标识(pickcode/fileId)
-        return vod.playFrom(flag).playUrl(TextUtils.join("$$$", episodes));
+        for (String[] f : files) {
+            String name = f[0].replace("#", " ").replace("$", " "); // 集名不能含分隔符
+            episodes.add(name + "$" + f[1]); // 集名$网盘标识(pickcode/fileId)
+        }
+        // 单线路多集：# 分隔集，$$$ 会变成多条线路每条一集
+        return vod.playFrom(flag).playUrl(TextUtils.join("#", episodes));
     }
 
     @Override
