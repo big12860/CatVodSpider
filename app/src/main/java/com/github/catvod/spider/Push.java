@@ -28,6 +28,23 @@ public class Push extends Spider {
     private static final String FLAG_DEFAULT = "默认";
     private static final String PULL = "__pull__";
 
+    // 对齐 py 版: 盒子打开站点秒开(本 spider 只承载推送详情, 无首页/分类/搜索)。
+    // 不覆写则走基类默认 {"class":[]}/{"list":[]}, 客户端仍会走一遍空列表加载流程。
+    @Override
+    public String homeContent(boolean filter) { return "{}"; }
+
+    @Override
+    public String homeVideoContent() { return "{}"; }
+
+    @Override
+    public String categoryContent(String tid, String pg, boolean filter, HashMap<String, String> extend) { return "{}"; }
+
+    @Override
+    public String searchContent(String key, boolean quick) { return "{}"; }
+
+    @Override
+    public String searchContent(String key, boolean quick, String pg) { return "{}"; }
+
     @Override
     public String detailContent(List<String> ids) {
         List<Vod> items = new ArrayList<>();
