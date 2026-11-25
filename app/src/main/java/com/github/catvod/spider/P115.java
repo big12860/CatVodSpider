@@ -381,6 +381,37 @@ public final class P115 {
         return dedup(searchVideos(ih));
     }
 
+    /** 铺线只读列举已离线目录的视频(不提交不离线, 零配额); 返回 [name, pickcode]。 */
+    public static List<String[]> listVideosReadOnly(String magnet) {
+        List<String[]> empty = new ArrayList<>();
+        if (cookie.isEmpty()) loadCookie();
+        if (cookie.isEmpty()) return empty;
+        String ih = btihOf(magnet);
+        if (ih == null) return empty;
+        String fid = queryFileId(ih);
+        if (fid == null) return empty;
+        return filterJunk(fetchFolderVideos(fid));
+    }
+
+    /** 点集播放: 离线并按 targetName 精确取一个文件 -> 直链; 返回 [url, UA], 失败 url 空。 */
+    public static String[] offlineOne(String magnet, String targetName) {
+        String[] fail = {"", UA};
+        List<String[]> all = offlineAll(magnet);
+        if (all.isEmpty()) return fail;
+        String pc = null;
+        if (targetName != null && !targetName.isEmpty()) {
+            String base = targetName.substring(targetName.lastIndexOf('/') + 1);
+            for (String[] f : all) {
+                if (f[0].equals(targetName) || f[0].equals(base) || f[0].endsWith("/" + base)) {
+                    pc = f[1];
+                    break;
+                }
+            }
+        }
+        if (pc == null) pc = all.get(0)[1]; // 没命中取第一个(单文件磁力保底)
+        return getDirectUrl(pc);
+    }
+
     private static List<String[]> filterJunk(List<String[]> vids) {
         List<String[]> kept = JunkFilter.filter(vids); // 外置 names/tokens/sha1s + token 边界
         List<String[]> out = new ArrayList<>();

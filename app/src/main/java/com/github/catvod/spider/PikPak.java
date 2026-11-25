@@ -427,6 +427,35 @@ public final class PikPak {
         return picked;
     }
 
+    /** 点集播放: 离线并按 targetName 精确取一个文件 -> 直链; 返回 [url, UA], 失败 url 空。 */
+    public static String[] offlineOne(String magnet, String targetName) {
+        String[] fail = {"", WEB_UA};
+        if (!ready() || btihOf(magnet) == null) return fail;
+        long end = System.currentTimeMillis() + 45000;
+        String[] r = submit(magnet, null);
+        if (r == null || r[0] == null) return fail;
+        String fid = r[0];
+        if (!"PHASE_TYPE_COMPLETE".equals(r[1]) && !waitComplete(fid, Math.max(1000, end - System.currentTimeMillis())))
+            return fail;
+        String picked = null;
+        long t0 = System.currentTimeMillis();
+        double iv = 500;
+        while (System.currentTimeMillis() - t0 < Math.max(1000, end - System.currentTimeMillis())) {
+            List<String[]> vids = collectVideos(fid, 0);
+            if (targetName != null && !targetName.isEmpty()) {
+                String base = targetName.substring(targetName.lastIndexOf('/') + 1).toLowerCase();
+                for (String[] v : vids) if (v[0].toLowerCase().equals(base)) { picked = v[1]; break; }
+            }
+            if (picked == null && !vids.isEmpty()) picked = vids.get(0)[1];
+            if (picked == null) picked = pickVideo(fid, new JSONArray());
+            if (picked != null) break;
+            sleep((long) iv);
+            iv = Math.min(iv + 250, 1500);
+        }
+        if (picked == null) return fail;
+        return getDirectUrl(picked);
+    }
+
     /** 取播放直链，返回 [url, User-Agent]；失败 url 为空。 */
     public static String[] getDirectUrl(String fileId) {
         if (!ready() || fileId == null || fileId.isEmpty()) return new String[]{"", WEB_UA};
