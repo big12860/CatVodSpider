@@ -93,3 +93,26 @@ tasks.register('spiderJar') {
         }
     }
 }
+
+
+// ===== self-contained fat jar (all spider + dependency classes) =====
+def fatStagedDir = layout.buildDirectory.dir('spiderJarFat/project')
+def fatJarFile = layout.projectDirectory.file('jar/fat_spider.jar')
+def prepareFatSpiderJar = tasks.register('prepareFatSpiderJar', Sync) {
+    group = 'build'
+    dependsOn decodeSpiderJar
+    from(decodedDir)
+    into(fatStagedDir)
+}
+def generateFatSpiderJar = tasks.register('generateFatSpiderJar', JavaExec) {
+    group = 'build'
+    dependsOn prepareFatSpiderJar
+    classpath = files(apktoolJar)
+    mainClass.set('brut.apktool.Main')
+    inputs.dir(fatStagedDir)
+    outputs.file(fatJarFile)
+    doFirst {
+        Files.deleteIfExists(fatJarFile.asFile.toPath())
+        setArgs(['b', fatStagedDir.get().asFile.absolutePath, '-f', '--api-level', libs.versions.minSdk.get(), '-c', '-o', fatJarFile.asFile.absolutePath])
+    }
+}
