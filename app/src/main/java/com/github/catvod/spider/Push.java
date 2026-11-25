@@ -19,16 +19,48 @@ import java.util.regex.Pattern;
 public class Push extends Spider {
 
     private static final Pattern THUNDER = Pattern.compile("(magnet|thunder|ed2k):.*");
+    private static final String FLAG_115 = "115";
+    private static final String FLAG_PIKPAK = "PikPak";
 
     @Override
     public String detailContent(List<String> ids) {
         List<Vod> items = new ArrayList<>();
-        for (String id : ids) items.add(vod(id));
+        for (String id : ids) {
+            if (id != null && id.toLowerCase().startsWith("magnet:")) items.add(magnetVod(id));
+            else items.add(vod(id));
+        }
         return Response.create().vods(items).string();
+    }
+
+    /** 磁力：优先 115 离线铺多集，失败退 PikPak，两者都没有则兜底裸磁力交客户端。 */
+    private Vod magnetVod(String magnet) {
+        Vod vod = Vod.create().id(magnet).name(new File(magnet).getName()).pic(Image.PUSH).typeName("FongMi");
+        List<String[]> files = P115.offlineAll(magnet);
+        String flag = FLAG_115;
+        if (files.isEmpty()) {
+            String fid = PikPak.offline(magnet);
+            if (fid != null && !fid.isEmpty()) {
+                files = new ArrayList<>();
+                files.add(new String[]{new File(magnet).getName(), fid});
+                flag = FLAG_PIKPAK;
+            }
+        }
+        if (files.isEmpty()) return vod.playUrl(magnet).playFrom("迅雷");
+        List<String> episodes = new ArrayList<>();
+        for (String[] f : files) episodes.add(f[0] + "$" + f[1]); // 集名$网盘标识(pickcode/fileId)
+        return vod.playFrom(flag).playUrl(TextUtils.join("$$$", episodes));
     }
 
     @Override
     public String playerContent(String flag, String id, List<String> vipFlags) {
+        if (FLAG_115.equals(flag)) {
+            String[] r = P115.getDirectUrl(id);
+            return Response.create().url(r[0]).header(singleHeader("User-Agent", r[1])).string();
+        }
+        if (FLAG_PIKPAK.equals(flag)) {
+            String[] r = PikPak.getDirectUrl(id);
+            return Response.create().url(r[0]).header(singleHeader("User-Agent", r[1])).string();
+        }
         if (id.contains("://") && id.contains("***")) id = id.replace("***", "#");
         Response result = Response.create().url(id);
         switch (flag) {
@@ -37,6 +69,12 @@ public class Push extends Spider {
             case "嗅探" -> result.parse();
         }
         return result.string();
+    }
+
+    private java.util.Map<String, String> singleHeader(String k, String v) {
+        java.util.Map<String, String> m = new java.util.HashMap<>();
+        m.put(k, v);
+        return m;
     }
 
     private Vod vod(String url) {
