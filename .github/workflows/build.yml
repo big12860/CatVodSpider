@@ -20,8 +20,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK platform
-        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
 
       - name: Grant gradlew
         run: chmod +x gradlew
@@ -35,4 +35,4 @@ jobs:
         with:
           name: custom_spider
           path: jar/custom_spider.jar
-          if-no-files-found: warn
+          if-no-files-found: error
