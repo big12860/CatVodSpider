@@ -390,7 +390,40 @@ public final class P115 {
         if (ih == null) return empty;
         String fid = queryFileId(ih);
         if (fid == null) return empty;
-        return filterJunk(fetchFolderVideos(fid));
+        List<String[]> vids = filterJunk(fetchFolderVideos(fid));
+        naturalSort(vids); // 选集按文件名自然数序(第2集排第10集前); 115 API 返回顺序不可靠
+        return vids;
+    }
+
+    /** 文件名自然排序: 数字段按数值, 非数字段按字典(大小写不敏感)。 */
+    private static void naturalSort(List<String[]> vids) {
+        java.util.Collections.sort(vids, new java.util.Comparator<String[]>() {
+            public int compare(String[] a, String[] b) { return naturalCompare(a[0], b[0]); }
+        });
+    }
+
+    private static int naturalCompare(String a, String b) {
+        int i = 0, j = 0;
+        while (i < a.length() && j < b.length()) {
+            char ca = a.charAt(i), cb = b.charAt(j);
+            if (Character.isDigit(ca) && Character.isDigit(cb)) {
+                int ia = i, ib = j;
+                while (ia < a.length() && Character.isDigit(a.charAt(ia))) ia++;
+                while (ib < b.length() && Character.isDigit(b.charAt(ib))) ib++;
+                String ta = a.substring(i, ia).replaceFirst("^0+", "");
+                String tb = b.substring(j, ib).replaceFirst("^0+", "");
+                if (ta.isEmpty()) ta = "0";
+                if (tb.isEmpty()) tb = "0";
+                if (ta.length() != tb.length()) return ta.length() - tb.length();
+                int c = ta.compareTo(tb);
+                if (c != 0) return c;
+                i = ia; j = ib;
+            } else {
+                if (ca != cb) return Character.compare(Character.toLowerCase(ca), Character.toLowerCase(cb));
+                i++; j++;
+            }
+        }
+        return (a.length() - i) - (b.length() - j);
     }
 
     /** 点集播放: 离线并按 targetName 精确取一个文件 -> 直链; 返回 [url, UA], 失败 url 空。 */
